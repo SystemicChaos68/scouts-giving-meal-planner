@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Scouts-Giving meal planner</title>
+<style>
+:root{--bg:#faf9f5;--card:#fff;--tx:#1f1e1d;--tx2:#5f5e5a;--bd:rgba(0,0,0,.12);--ac:#185FA5;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1f1e1d;--card:#2b2a28;--tx:#f1efe8;--tx2:#b4b2a9;--bd:rgba(255,255,255,.16);--ac:#85B7EB;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1f1e1d;--card:#2b2a28;--tx:#f1efe8;--tx2:#b4b2a9;--bd:rgba(255,255,255,.16);--ac:#85B7EB;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:720px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:24px;font-weight:500;margin:0 0 4px}h2{font-size:18px;font-weight:500;margin:30px 0 10px}
+p{margin:0}.sub{color:var(--tx2);font-size:13px}
+.card{background:var(--card);border:.5px solid var(--bd);border-radius:12px;padding:4px 16px}
+.row{display:flex;gap:12px;padding:10px 0;border-top:.5px solid var(--bd);font-size:14px;justify-content:space-between}
+.row:first-child{border-top:0}.row>div:last-child{text-align:right;max-width:55%}.row b{font-weight:500}
+.ctl{display:flex;align-items:center;gap:12px;margin:8px 0;font-size:14px}
+.ctl label{min-width:64px;color:var(--tx2)}.ctl input{flex:1;accent-color:var(--ac)}.ctl span{min-width:28px;text-align:right;font-weight:500}
+.m{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:14px 0}
+.m div{background:var(--card);border:.5px solid var(--bd);border-radius:8px;padding:10px 12px}
+.m small{display:block;font-size:12px;color:var(--tx2)}.m strong{font-size:22px;font-weight:500}
+select{font:inherit;font-size:14px;padding:6px 8px;border:.5px solid var(--bd);border-radius:8px;background:var(--card);color:var(--tx);width:100%;box-sizing:border-box}
+#th{border:1.5px solid var(--ac)}
+.sel{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.sel small{display:block;font-size:12px;color:var(--tx2);margin-bottom:2px}
+.hd{font-size:13px;font-weight:500;color:var(--tx2);padding:12px 0 2px}
+label.ck{display:flex;gap:10px;align-items:flex-start;padding:7px 0;font-size:14px;border-top:.5px solid var(--bd);cursor:pointer}
+label.ck input{margin-top:4px;accent-color:var(--ac)}label.ck.done span{text-decoration:line-through;color:var(--tx2)}
+.t{color:var(--ac);font-weight:500;min-width:40px}ol{margin:6px 0;padding-left:20px;font-size:14px}
+.pr{width:64px;font:inherit;font-size:14px;padding:3px 6px;border:.5px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--tx);text-align:right}
+@media print{.ctl,.sel,#th,.pr{display:none}}
+</style></head><body><div class="wrap">
+<h1>Scouts-Giving meal planner</h1>
+<p class="sub">Pick a theme, then adjust any course. The menu, shopping list, cost, crew jobs, and timeline all update.</p>
+<div style="margin-top:14px">
+<div class="ctl"><label for="s">Scouts</label><input type="range" id="s" min="5" max="60" value="25"><span id="so">25</span></div>
+<div class="ctl"><label for="a">Adults</label><input type="range" id="a" min="2" max="25" value="10"><span id="ao">10</span></div>
+<div class="sub" style="margin-top:10px">Theme</div><select id="th" aria-label="Theme"></select>
+<div class="sub" style="margin:12px 0 4px">Adjust individual courses</div><div class="sel" id="sel"></div>
+</div>
+<div class="m" id="mets"></div>
+<h2>Menu</h2><div class="card" id="menu"></div><div class="sub" id="notes" style="margin-top:6px"></div>
+<h2>Shopping list</h2><div class="card" id="shop"></div>
+<h2>Cost estimate</h2><p class="sub" style="margin-bottom:10px">Unit prices are starting estimates. Replace them with what you see in your store’s weekly ad or app and the totals update. Kroger card pricing and digital coupons can lower these.</p><div class="card" id="cost"></div>
+<h2>Crew jobs</h2><div class="card" id="jobs"></div>
+<p class="sub" style="margin-top:6px">Adults handle ovens, hot pots, and carving. Scouts use knives only with an adult beside them.</p>
+<h2>Three-hour timeline</h2><div class="card" id="tl"></div>
+<div id="rc"></div>
+</div>
+<script>
+const c=Math.ceil,$=i=>document.getElementById(i);
+const SEC=[['M','Meat'],['P','Produce'],['D','Dairy and eggs'],['C','Canned and boxed'],['B','Bakery'],['X','Drinks and spices'],['S','Supplies']];
+const N={n:'Skip this course',w:'',t:[],i:()=>[],d:0};
+const CO=(k,f)=>[[f+' (21 oz)','can',k*2,3.5,'C'],['Yellow cake mix','box',k,1.75,'C'],['Butter','stick',k,1.25,'D']];
+const WC=n=>['Whipped cream','tub',c(n/20),3,'D'];
+const HC='<li>Heat the oven to 350°F. Grease or parchment-line each 12-inch (6 qt) Dutch oven.</li><li>Spread the pie filling in the bottom.</li><li>Sprinkle dry cake mix over the top. Do not stir.</li><li>Dot with thin slices of butter and dust with cinnamon.</li><li>Bake with the lid on 25 min, then lid off 15 to 20 min, until golden and bubbling. Rest 10 min.</li>';
+const TK=[[0,'Season turkey parts and roast at 350°F to 165°F (about 1 hr 45 min to 2 hr)'],[120,'Turkey out to rest 20 min under foil'],[150,'Carve turkey']];
+const HM=[[30,'Wrap ham in foil and heat at 325°F to 140°F (about 2 hr)'],[150,'Slice ham']];
+const O={
+main:{
+turkey:{n:'Roast turkey',w:'Kitchen oven',t:TK,i:n=>[['Turkey, bone-in parts','lb',c(n*.9),2.25,'M']],d:0},
+ham:{n:'Spiral ham',w:'Kitchen oven',t:HM,i:n=>[['Spiral ham','lb',c(n*.6),2.75,'M']],d:0},
+pork:{n:'Pulled pork butt',w:'Dutch ovens, in the oven',note:'A whole butt takes 6 to 8 hours. Cutting it into 3-inch chunks gets it fork-tender in about 2 to 2 1/2 hours, or cook it a day ahead and reheat.',t:[[0,'Cut pork butt into 3-inch chunks, rub, and braise covered in Dutch ovens at 325°F (about 2 to 2 1/2 hr until fork-tender)'],[140,'Shred pork and stir in BBQ sauce; keep warm']],i:n=>[['Pork butt','lb',c(n*.6),2.3,'M'],['BBQ sauce','bottle',c(n/10),2.5,'C'],['Slider buns','dozen',c(n/12),4,'B']],d:n=>c(n*.6/7)},
+chicken:{n:'Chicken leg quarters',w:'Kitchen oven',t:[[75,'Season leg quarters and roast at 375°F to 175°F (about 1 hr)'],[135,'Chicken out; tent with foil']],i:n=>[['Chicken leg quarters','lb',c(n*.85),1.2,'M']],d:0},
+both:{n:'Half turkey, half ham',w:'Kitchen oven',note:'Needs two ovens, or stagger the turkey and ham.',t:TK.concat(HM),i:n=>[['Turkey, bone-in parts','lb',c(n*.45),2.25,'M'],['Spiral ham','lb',c(n*.3),2.75,'M']],d:0}},
+starch:{
+mashed:{n:'Mashed potatoes',w:'Dutch oven, burner',t:[[15,'Peel and cut potatoes into water'],[60,'Boil potatoes in a Dutch oven (about 25 min)'],[105,'Drain and mash with butter and milk; keep warm on the lowest burner']],i:n=>{const p=c(n*.4);return[['Potatoes','lb',p,.8,'P'],['Butter','stick',c(p/3),1.25,'D'],['Milk','half-gallon',c(c(n/6)/8),2.5,'D']]},d:1},
+sweet:{n:'Sweet potato casserole',w:'Dutch oven, then oven',t:[[15,'Peel and cube sweet potatoes'],[60,'Boil sweet potatoes 20 min; mash with butter and brown sugar; spread in foil pans'],[120,'Top with marshmallows and bake 25 to 30 min']],i:n=>[['Sweet potatoes','lb',c(n*.4),1.2,'P'],['Mini marshmallows (10 oz)','bag',c(n/12),2.5,'C'],['Butter','stick',c(n/12),1.25,'D'],['Brown sugar','bag',1,3,'C']],d:1},
+smashed:{n:'Garlic smashed red potatoes',w:'Dutch oven, burner',t:[[30,'Wash and halve red potatoes (no peeling)'],[75,'Boil 20 min, then smash with butter and garlic; keep warm']],i:n=>[['Red potatoes','lb',c(n*.4),1,'P'],['Butter','stick',c(n*.4/4),1.25,'D']],d:1},
+bar:{n:'Baked potato bar',w:'Kitchen oven',t:[[45,'Scrub and poke potatoes, rub with oil, and bake at 350°F (about 1 hr 15 min)'],[150,'Set out toppings']],i:n=>[['Russet potatoes','lb',c(n*.65),.9,'P'],['Butter','stick',c(n/12),1.25,'D'],['Sour cream (16 oz)','tub',c(n/10),2.2,'D'],['Shredded cheese (8 oz)','bag',c(n/8),2.5,'D']],d:0}},
+stuff:{
+boxed:{n:'Boxed stuffing',w:'Kitchen oven, foil pans',t:[[15,'Assemble stuffing in foil pans; cover and hold'],[120,'Stuffing into oven (about 30 min)']],i:n=>[['Stuffing mix','box',c(n/5),2.5,'C'],['Butter','stick',c(c(n/5)/2),1.25,'D']],d:0},
+corn:{n:'Cornbread dressing',w:'Kitchen oven, foil pans',t:[[10,'Bake cornbread from mix (about 20 min)'],[45,'Crumble cornbread; mix with cooked celery and onion, broth, and eggs in foil pans'],[120,'Dressing into oven (about 35 min)']],i:n=>[['Cornbread mix (8.5 oz)','box',c(n/3),.8,'C'],['Chicken broth (32 oz)','carton',c(n/8),1.5,'C'],['Celery','bunch',c(n/20),2.2,'P'],['Onions','lb',c(n/12),1.2,'P'],['Eggs','dozen',c(n/24),3,'D'],['Butter','stick',c(n/12),1.25,'D']],d:0},
+saus:{n:'Sausage and apple stuffing',w:'Dutch oven, then oven',t:[[20,'Brown sausage with chopped apple and onion in a Dutch oven'],[60,'Mix with stuffing mix and broth in foil pans'],[120,'Bake about 30 min']],i:n=>[['Stuffing mix','box',c(n/5),2.5,'C'],['Breakfast sausage (1 lb)','roll',c(n/8),4.5,'M'],['Apples','lb',c(n/10),1.6,'P'],['Onions','lb',c(n/12),1.2,'P'],['Chicken broth (32 oz)','carton',c(n/8),1.5,'C']],d:1},
+none:N},
+veg:{
+bean:{n:'Green bean casserole',w:'Kitchen oven, foil pans',t:[[30,'Assemble green bean casserole in foil pans; cover and hold'],[120,'Into oven (about 30 min)']],i:n=>[['Green beans (14.5 oz)','can',c(n/3),1.1,'C'],['Cream of mushroom soup','can',c(n/6),1.4,'C'],['Fried onions (6 oz)','canister',c(n/8),3.5,'C']],d:0},
+carrot:{n:'Honey-glazed carrots',w:'Dutch oven, burner',t:[[30,'Peel and slice carrots'],[120,'Glaze carrots with butter and honey in a Dutch oven (about 25 min)']],i:n=>[['Carrots','lb',c(n*.25),1.3,'P'],['Butter','stick',c(n/20),1.25,'D'],['Honey (12 oz)','bottle',c(n/25),4,'C']],d:1},
+mac:{n:'Mac and cheese',w:'Dutch ovens, burner',note:'Needs a very large pot or two Dutch ovens. It also gives vegetarians a real main.',t:[[100,'Boil macaroni; make cheese sauce with butter, milk, and cheese; combine and keep warm']],i:n=>[['Elbow macaroni (16 oz)','box',c(n/8),1.5,'C'],['Shredded cheese (8 oz)','bag',c(n/3.5),2.5,'D'],['Milk','half-gallon',c(n/12),2.5,'D'],['Butter','stick',c(n/12),1.25,'D']],d:2},
+corncas:{n:'Corn casserole',w:'Kitchen oven, foil pans',t:[[30,'Mix corn casserole in foil pans; cover and hold'],[105,'Into oven (about 45 min)']],i:n=>[['Whole kernel corn (15 oz)','can',c(n/8),1,'C'],['Creamed corn (15 oz)','can',c(n/8),1.2,'C'],['Cornbread mix (8.5 oz)','box',c(n/8),.8,'C'],['Sour cream (16 oz)','tub',c(n/16),2.2,'D'],['Butter','stick',c(n/8),1.25,'D']],d:0},
+none:N},
+cran:{
+can:{n:'Canned cranberry sauce',w:'No cooking',t:[],i:n=>[['Cranberry sauce (14 oz)','can',c(n/8),1.9,'C']],d:0},
+fresh:{n:'Cranberry-orange relish',w:'Food processor',t:[[60,'Pulse cranberries, oranges, and sugar in a food processor; chill']],i:n=>[['Fresh cranberries (12 oz)','bag',c(n/10),3.5,'P'],['Oranges','each',c(n/12),.9,'P'],['Sugar (4 lb)','bag',1,3.5,'C']],d:0},
+none:N},
+bread:{
+rolls:{n:'Dinner rolls',w:'Warm in the oven',t:[[150,'Warm rolls in the oven for the last 5 to 10 min']],i:n=>[['Dinner rolls','dozen',c(c(n*1.5)/12),4.5,'B']],d:0},
+bisc:{n:'Biscuits',w:'Kitchen oven',t:[[140,'Bake biscuits (12 to 15 min)']],i:n=>[['Refrigerated biscuits (8 ct)','can',c(n*1.5/8),2.5,'B']],d:0},
+cbread:{n:'Cornbread',w:'Kitchen oven, foil pans',t:[[100,'Mix cornbread from boxes and bake in foil pans (about 25 min)']],i:n=>[['Cornbread mix (8.5 oz)','box',c(n/6),.8,'C'],['Eggs','dozen',c(n/36),3,'D']],d:0},
+none:N},
+dess:{
+pies:{n:'Pumpkin and apple pie',w:'Store-bought',t:[[150,'Cut pies']],i:n=>[['Pies (pumpkin and apple)','pie',c(n/8),7,'B'],WC(n)],d:0},
+apple:{n:'Apple cobbler',w:'Dutch oven in the oven',how:HC,t:[[120,'Cobbler Dutch ovens into the oven (about 45 min)']],i:n=>CO(c(n/10),'Apple pie filling').concat([WC(n)]),d:n=>c(n/10)},
+peach:{n:'Peach cobbler',w:'Dutch oven in the oven',how:HC,t:[[120,'Cobbler Dutch ovens into the oven (about 45 min)']],i:n=>CO(c(n/10),'Peach pie filling').concat([WC(n)]),d:n=>c(n/10)},
+pump:{n:'Pumpkin dump cake',w:'Dutch oven in the oven',how:'<li>Heat the oven to 350°F and grease each 12-inch (6 qt) Dutch oven.</li><li>Stir pumpkin, evaporated milk, and eggs together in the pot, plus 1/2 cup sugar and 2 tsp cinnamon.</li><li>Sprinkle dry cake mix over the top. Do not stir.</li><li>Dot with thin slices of butter.</li><li>Bake lid off about 45 to 50 min, until set and golden. Rest 10 min.</li>',t:[[120,'Dump cake Dutch ovens into the oven (about 50 min)']],i:n=>{const k=c(n/10);return[['Pumpkin puree (15 oz)','can',k,2,'C'],['Evaporated milk (12 oz)','can',k,1.8,'C'],['Yellow cake mix','box',k,1.75,'C'],['Butter','stick',k*2,1.25,'D'],['Eggs','dozen',c(k/4),3,'D'],WC(n)]},d:n=>c(n/10)},
+both:{n:'Pies and apple cobbler',w:'Store-bought plus Dutch oven',how:HC,t:[[120,'Cobbler Dutch ovens into the oven (about 45 min)'],[150,'Cut pies']],i:n=>[['Pies (pumpkin and apple)','pie',c(n/16),7,'B']].concat(CO(c(n/20),'Apple pie filling'),[WC(n)]),d:n=>c(n/20)},
+none:N}};
+const CN={main:'Main',starch:'Potatoes and starch',stuff:'Stuffing',veg:'Vegetable side',cran:'Cranberry',bread:'Bread',dess:'Dessert'};
+const TH={classic:['Classic Thanksgiving',{main:'turkey',starch:'mashed',stuff:'boxed',veg:'bean',cran:'can',bread:'rolls',dess:'both'}],
+south:['Southern comfort',{main:'ham',starch:'sweet',stuff:'corn',veg:'mac',cran:'can',bread:'bisc',dess:'peach'}],
+easy:['Easiest, low effort',{main:'ham',starch:'sweet',stuff:'boxed',veg:'bean',cran:'can',bread:'rolls',dess:'apple'}],
+bbq:['Backyard BBQ',{main:'pork',starch:'bar',stuff:'none',veg:'mac',cran:'none',bread:'cbread',dess:'peach'}],
+budget:['Budget-friendly',{main:'chicken',starch:'smashed',stuff:'boxed',veg:'corncas',cran:'can',bread:'bisc',dess:'pies'}]};
+const NM={main:{},starch:{},stuff:{},veg:{},cran:{},bread:{},dess:{}};
+let sel=Object.assign({},TH.classic[1]),prices={},LL=[],NN=1,DU=0;
+const row=(t,d,v)=>'<div class="row"><div><b>'+t+'</b><div class="sub">'+d+'</div></div><div>'+v+'</div></div>';
+function tot(){let t=0,f=0;LL.forEach((x,i)=>{const p=prices[x.key]===undefined?x.p:prices[x.key],v=x.q*p,e=$('lt'+i);if(e)e.textContent='$'+v.toFixed(2);t+=v;if(x.sec!='S')f+=v});
+$('mets').innerHTML=[['People',NN],['Estimated total','$'+Math.round(t)],['Per person','$'+(t/NN).toFixed(2)],['Dutch ovens, up to',DU]].map(x=>'<div><small>'+x[0]+'</small><strong>'+x[1]+'</strong></div>').join('')}
+function sync(){Object.keys(CN).forEach(k=>$('c_'+k).value=sel[k]);const m=Object.keys(TH).find(h=>Object.keys(CN).every(k=>TH[h][1][k]==sel[k]));$('th').value=m||'custom'}
+function render(){const s=+$('s').value,a=+$('a').value,n=s+a;NN=n;$('so').textContent=s;$('ao').textContent=a;
+const ch=Object.keys(CN).map(k=>[k,O[k][sel[k]]]);
+let items=[['Gravy','jar',c(n/12),2.5,'C'],['Apple cider','gallon',c(n*12/128),5.5,'X'],['Spices and pantry staples','set',1,12,'X'],['Plates, cups, forks, foil pans','person',n,1,'S']],tasks=[[0,'Preheat oven to 350°F'],[60,'Start cider on a low burner in a Dutch oven'],[120,'Make gravy in a Dutch oven (use drippings if you have them, or heat jarred gravy)'],[165,'Serve']],dut=2,notes=[];
+ch.forEach(([k,o])=>{items=items.concat(o.i(n));tasks=tasks.concat(o.t);dut+=typeof o.d=='function'?o.d(n):o.d;if(o.note)notes.push(o.n+': '+o.note)});DU=dut;
+const ag={};items.forEach(x=>{const key=x[0]+'|'+x[1];if(ag[key])ag[key].q+=x[2];else ag[key]={key:key,nm:x[0],u:x[1],q:x[2],p:x[3],sec:x[4]}});
+LL=Object.values(ag).sort((x,y)=>SEC.findIndex(z=>z[0]==x.sec)-SEC.findIndex(z=>z[0]==y.sec));
+$('menu').innerHTML=ch.filter(x=>x[1]!==N).map(([k,o])=>{const f=o.i(n)[0];return row(o.n,CN[k]+(o.w?' · '+o.w:''),f?f[2]+' '+f[1]:'')}).join('')+row('Gravy','Dutch oven, burner',c(n/12)+' jars')+row('Hot spiced cider','Dutch oven, low burner',c(n*12/128)+' gallons');
+$('notes').innerHTML=notes.join('<br>');
+$('shop').innerHTML=SEC.map(([cd,nm])=>{const g=LL.filter(x=>x.sec==cd);return g.length?'<div class="hd">'+nm+'</div>'+g.map(x=>'<label class="ck"><input type="checkbox"><span>'+x.nm+' — '+x.q+' '+x.u+'</span></label>').join(''):''}).join('');
+document.querySelectorAll('label.ck input').forEach(b=>b.onchange=()=>b.parentNode.classList.toggle('done',b.checked));
+$('cost').innerHTML=LL.map((x,i)=>'<div class="row" style="align-items:center"><div><b>'+x.nm+'</b><div class="sub">'+x.q+' × '+x.u+'</div></div><div style="display:flex;gap:10px;align-items:center;max-width:none">$<input class="pr" type="number" min="0" step="0.05" value="'+(prices[x.key]===undefined?x.p:prices[x.key])+'" data-i="'+i+'" aria-label="Price per '+x.u+' for '+x.nm+'"><span style="min-width:64px;text-align:right" id="lt'+i+'"></span></div></div>').join('');
+document.querySelectorAll('.pr').forEach(b=>b.oninput=()=>{prices[LL[b.dataset.i].key]=b.value===''?0:+b.value;tot()});
+const nm=k=>ch.find(x=>x[0]==k)[1],J=[['Main crew',nm('main').n,.1,2],['Potato and starch crew',nm('starch').n,.2,1],['Stuffing and vegetable crew',nm('stuff').n+', '+nm('veg').n,.15,1],['Gravy and cider crew','Dutch ovens on burners',.1,1],['Serving line','Plate, serve, refill',.1,2],['Setup crew','Tables, drinks, utensils',.2,1],['Cleanup crew','Dishes, trash, tables',.15,1]];let left=s,adl=0;
+$('jobs').innerHTML=J.map((j,i)=>{const k=i==J.length-1?left:Math.min(left,Math.max(1,Math.round(s*j[2])));left-=k;adl+=j[3];return row(j[0],j[1],k+' scout'+(k>1?'s':'')+', '+j[3]+' adult lead'+(j[3]>1?'s':''))}).join('')+'<div class="sub" style="padding:10px 0;border-top:.5px solid var(--bd)">Adult leads needed: '+adl+' of '+a+' available'+(a>adl?'. The extras float and run food safety.':'. Combine crews if you are short.')+'</div>';
+$('tl').innerHTML=tasks.sort((x,y)=>x[0]-y[0]).map(x=>'<div class="row" style="justify-content:flex-start"><div class="t">'+Math.floor(x[0]/60)+':'+String(x[0]%60).padStart(2,'0')+'</div><div style="text-align:left;max-width:none">'+x[1]+'</div></div>').join('');
+const dh=O.dess[sel.dess].how;$('rc').innerHTML=dh?'<h2>Dutch oven dessert method</h2><div class="card" style="padding:12px 16px"><p class="sub">One batch per 12-inch Dutch oven, about 10 servings each. Bake it in the kitchen oven, not on a burner, because cast iron on a burner scorches the bottom before the top cooks.</p><ol>'+dh+'</ol></div>':'';
+sync();tot()}
+$('th').innerHTML=Object.keys(TH).map(h=>'<option value="'+h+'">'+TH[h][0]+'</option>').join('')+'<option value="custom">Custom (adjusted)</option>';
+$('th').onchange=e=>{if(TH[e.target.value]){sel=Object.assign({},TH[e.target.value][1]);render()}};
+$('sel').innerHTML=Object.keys(CN).map(k=>'<div><small>'+CN[k]+'</small><select id="c_'+k+'" aria-label="'+CN[k]+'">'+Object.keys(O[k]).map(o=>'<option value="'+o+'">'+O[k][o].n+'</option>').join('')+'</select></div>').join('');
+Object.keys(CN).forEach(k=>$('c_'+k).onchange=e=>{sel[k]=e.target.value;render()});
+['s','a'].forEach(i=>$(i).addEventListener('input',render));
+render();
+</script></body></html>
